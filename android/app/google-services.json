@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "256550081846",
+    "project_id": "triage-de-dechets",
+    "storage_bucket": "triage-de-dechets.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:256550081846:android:3b7e8e8b2e630260724f97",
+        "android_client_info": {
+          "package_name": "com.example.tri_dechets"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "256550081846-7fin0dbc7h0a2jatic8m5vsi6f3lgdur.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.tri_dechets",
+            "certificate_hash": "cc45a31a2d96621d1176c59135f9de2f2423f87e"
+          }
+        },
+        {
+          "client_id": "256550081846-72cln9jao9d6h2kjueousv1ogimn7jku.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8I0t4b-PosSvEytTMpmBVNz7rv26YIo0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "256550081846-72cln9jao9d6h2kjueousv1ogimn7jku.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
