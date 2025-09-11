@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tri_dechets/pages/auth/AccountInfo_page.dart';
+import 'package:tri_dechets/pages/history_page.dart';
 import 'package:tri_dechets/pages/home_page.dart';
+import 'package:tri_dechets/pages/map_page.dart';
 import 'package:tri_dechets/pages/product_page.dart';
+import 'package:tri_dechets/pages/profile_page.dart';
+import 'package:tri_dechets/pages/scan_page.dart';
+import 'package:tri_dechets/services/auth_service.dart';
 import 'package:tri_dechets/splashes/splash_app.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
+import 'package:tri_dechets/utils/theme_util.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +28,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'OpenNutri',
+      title: 'DécheTri',
       debugShowCheckedModeBanner: false,
       home: const SplashApp(),
     );
@@ -37,6 +44,8 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
+  String? codePostal;
+  String? commune;
 
   void setCurrentIndex(int index) {
     setState(() {
@@ -45,104 +54,127 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   final List<String> _titles = const [
-    "Acceuil",
-    "Map",
-    "Déchet",
+    "Accueil",
+    "Déchets",
+    "Carte",
+    "Historique",
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    getUserData().then((userData) {
+      if (userData != null) {
+        setState(() {
+          codePostal = userData['code_postal'];
+          commune = userData['commune'];
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
       HomePage(onMenuTap: setCurrentIndex),
-      ProductPage()
+      ProductPage(onMenuTap: setCurrentIndex),
+      MapPage(
+        codePostal: codePostal ?? '',
+        commune: commune ?? '',
+      ),
+      HistoryPage(onMenuTap: setCurrentIndex),
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _titles[_currentIndex],
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-                color: Colors.white,
-              ),
-            ),
-          ],
+        leading: _currentIndex == 0
+            ? null
+            : IconButton(
+          icon: const Icon(Icons.arrow_back, color: cardColor),
+          onPressed: () {
+            setState(() {
+              _currentIndex = 0;
+            });
+          },
         ),
+        title: _currentIndex == 0
+            ? GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const ProfileScreen()),
+            );
+          },
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundImage: (Supabase.instance.client.auth.currentUser?.userMetadata?["avatar_url"]) != null
+                    ? NetworkImage(Supabase.instance.client.auth.currentUser!.userMetadata!["avatar_url"])
+                    : null,
+                backgroundColor: primaryColor,
+                child: (Supabase.instance.client.auth.currentUser?.userMetadata?["avatar_url"]) == null
+                    ? const Icon(Icons.person, color: Colors.white)
+                    : null,
+              ),
+            ],
+          ),
+        )
+            : Text(
+          _titles[_currentIndex],
+          style: titleTextStyle.copyWith(fontSize: 22, fontWeight: FontWeight.bold, color: cardColor),
+        ),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.purple, Colors.deepPurple],
+              colors: [
+                primaryColor.withOpacity(0.9),
+                primaryColor.withOpacity(0.7),
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
         ),
-        actions: [
-          Row(
-            children: [
-              ClipOval(
-                child: Image.asset(
-                  'assets/images/logo.png', // Assure-toi que ton chemin est correct
-                  height: 30,
-                  width: 30,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                "Open Nutri",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 16),
-            ],
-          ),
-        ],
-
       ),
 
       body: _pages[_currentIndex],
-      bottomNavigationBar: SalomonBottomBar(
+
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: setCurrentIndex,
-        items: [
-          SalomonBottomBarItem(
-            icon: const Icon(Icons.home),
-            title: const Text("Accueil"),
-            selectedColor: Colors.purple.shade700,
+        onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: primaryColor,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        backgroundColor: cardColor,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: "Accueil",
           ),
-          SalomonBottomBarItem(
-            icon: const Icon(Icons.favorite),
-            title: const Text("Favoris"),
-            selectedColor: Colors.purple.shade700,
+          BottomNavigationBarItem(
+            icon: Icon(Icons.delete),
+            label: "Déchets",
           ),
-          SalomonBottomBarItem(
-            icon: const Icon(Icons.qr_code_scanner),
-            title: const Text("Scan"),
-            selectedColor: Colors.purple.shade700,
+          BottomNavigationBarItem(
+            icon: Icon(Icons.map),
+            label: "Carte",
           ),
-          SalomonBottomBarItem(
-            icon: const Icon(Icons.history),
-            title: const Text("Historique"),
-            selectedColor: Colors.purple.shade700,
-          ),
-          SalomonBottomBarItem(
-            icon: const Icon(Icons.person),
-            title: const Text("Profile"),
-            selectedColor: Colors.purple.shade700,
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: "Historique",
           ),
         ],
       ),
     );
   }
 }
+
 
 

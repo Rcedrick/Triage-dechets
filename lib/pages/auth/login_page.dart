@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tri_dechets/main.dart';
-import 'profile_page.dart';
+import 'information_page.dart';
 import '../../models/user_model.dart';
 
 class LoginPage extends StatefulWidget {
@@ -15,31 +16,49 @@ class _LoginPageState extends State<LoginPage> {
   final supabase = Supabase.instance.client;
   bool loading = false;
 
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
+
   Future<void> _signInWithGoogle() async {
     setState(() => loading = true);
+
     try {
-      await supabase.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.flutter://login-callback/',
+      // ✅ Nettoyer toute session Google avant de demander connexion
+      await _googleSignIn.disconnect().catchError((_) {});
+      await _googleSignIn.signOut();
+
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        setState(() => loading = false);
+        return;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final response = await supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: googleAuth.idToken!,
+        accessToken: googleAuth.accessToken,
       );
-      final user = supabase.auth.currentUser;
+
+      final user = response.user;
       if (user != null) {
-        final response = await supabase
+        final existingUser = await supabase
             .from('users')
             .select()
             .eq('id', user.id)
             .maybeSingle();
 
-        if (response == null) {
+        if (existingUser == null) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const ProfilePage()),
+            MaterialPageRoute(builder: (_) => const InformationPage()),
           );
         } else {
-          final myUser = UserModel.fromMap(response);
-          Navigator.pushReplacement(
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (_) => MainNavigation()),
+                (Route<dynamic> route) => false,
           );
         }
       }
@@ -51,6 +70,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => loading = false);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

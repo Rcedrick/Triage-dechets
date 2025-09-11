@@ -1,29 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/product_service.dart';
 import '../utils/color_utils.dart';       // 🎨 gestion des couleurs matériaux
 import '../utils/customise_utils.dart';  // 🎨 buildFancyHeader
-import '../utils/theme_util.dart';       // 🎨 background et cardColor
+import '../utils/theme_util.dart';
 import 'detailProduct_page.dart';
-import 'scan_page.dart';
 
-class ProductPage extends StatefulWidget {
+class HistoryPage extends StatefulWidget {
   final void Function(int) onMenuTap;
-  const ProductPage({super.key, required this.onMenuTap});
+  const HistoryPage({super.key, required this.onMenuTap});
 
   @override
-  State<ProductPage> createState() => _ProductPageState();
+  State<HistoryPage> createState() => _HistoryPageState();
 }
 
-class _ProductPageState extends State<ProductPage> {
+class _HistoryPageState extends State<HistoryPage> {
   final ProductService _productService = ProductService();
-  late Future<List<Map<String, dynamic>>> _futureProducts;
-  String searchQuery = "";
+  late Future<List<Map<String, dynamic>>> _futureHistory;
 
   @override
   void initState() {
     super.initState();
-    _futureProducts = _productService.fetchProductsWithAllPackagings();
+    _futureHistory = _productService.fetchProductsWithThrownPackagings();
   }
 
   @override
@@ -32,40 +29,14 @@ class _ProductPageState extends State<ProductPage> {
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
+          // 🔹 En-tête stylisé
+          //buildFancyHeader("Mes Historiques"),
 
+          // 🔹 Contenu
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: "Rechercher un produit...",
-                hintStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 21,
-                ),
-                suffixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding:
-                const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: const BorderSide(color: Colors.grey, width: 1),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value.toLowerCase();
-                });
-              },
-            ),
-          ),
-
-          // 📦 Liste produits
-          Padding(
-            padding: const EdgeInsets.only(top: 100, bottom: 80),
+            padding: const EdgeInsets.only(top: 140, bottom: 80),
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _futureProducts,
+              future: _futureHistory,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -73,35 +44,19 @@ class _ProductPageState extends State<ProductPage> {
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(
                     child: Text(
-                      "Aucun produit trouvé",
+                      "Aucun emballage jeté",
                       style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   );
                 }
 
-                // 🔎 Filtrage en fonction de la recherche
-                final products = snapshot.data!;
-                final filteredProducts = products.where((prod) {
-                  final name = (prod["name"] ?? "").toString().toLowerCase();
-                  final brand = (prod["brand"] ?? "").toString().toLowerCase();
-                  return name.contains(searchQuery) ||
-                      brand.contains(searchQuery);
-                }).toList();
-
-                if (filteredProducts.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "Aucun produit ne correspond à votre recherche",
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  );
-                }
+                final historyProducts = snapshot.data!;
 
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 15),
-                  itemCount: filteredProducts.length,
+                  itemCount: historyProducts.length,
                   itemBuilder: (_, index) {
-                    final prod = filteredProducts[index];
+                    final prod = historyProducts[index];
                     final packagings = prod["packagings"] as List;
 
                     return Card(
@@ -132,9 +87,7 @@ class _ProductPageState extends State<ProductPage> {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: (prod["image_url"] != null &&
-                                    prod["image_url"]
-                                        .toString()
-                                        .isNotEmpty)
+                                    prod["image_url"].toString().isNotEmpty)
                                     ? Image.network(
                                   prod["image_url"],
                                   width: 90,
@@ -171,10 +124,9 @@ class _ProductPageState extends State<ProductPage> {
                                     ),
                                     const SizedBox(height: 6),
 
-                                    // Marque
-                                    Text(
-                                      prod["brand"] ?? "Marque inconnue",
-                                      style: const TextStyle(
+                                    const Text(
+                                      "Emballages jetés :",
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 15,
                                       ),
@@ -229,26 +181,6 @@ class _ProductPageState extends State<ProductPage> {
                   },
                 );
               },
-            ),
-          ),
-
-          // 📷 Bouton scan
-          Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: FloatingActionButton(
-                backgroundColor: primaryColor,
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ScanPage()),
-                  );
-                },
-                child: const Icon(Icons.qr_code_scanner,
-                    size: 32, color: Colors.white),
-              ),
             ),
           ),
         ],

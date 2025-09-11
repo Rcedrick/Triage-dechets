@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tri_dechets/main.dart';
+import 'package:tri_dechets/utils/theme_util.dart';
 import '../pages/auth/login_page.dart';
 
 class SplashApp extends StatefulWidget {
@@ -21,7 +22,6 @@ class _SplashAppState extends State<SplashApp> {
   }
 
   Future<void> _navigate() async {
-    // Attente pour voir le splash (2 secondes par ex.)
     await Future.delayed(const Duration(seconds: 2));
 
     final user = supabase.auth.currentUser;
@@ -43,10 +43,40 @@ class _SplashAppState extends State<SplashApp> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: CircularProgressIndicator(color: Colors.purple),
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [primaryColor, backgroundColor],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipOval(
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              SizedBox(width: 16),
+              Text(
+                'DécheTri',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tri_dechets/pages/scan_page.dart';
+import '../utils/theme_util.dart';
+import 'auth/login_page.dart';
 
 class HomePage extends StatelessWidget {
   final Function(int) onMenuTap;
@@ -17,11 +21,14 @@ class HomePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 40),
                   _buildSectionTitle("Actions à faire"),
                   _buildActions(context),
+
                   const SizedBox(height: 20),
-                  _buildSectionTitle("Déchets à jeter"),
+                  _buildSectionTitle("Produits scannés récemment"),
+                  _buildRecentScans(),
+
                   const SizedBox(height: 20),
                   _buildSectionTitle("Astuces & Actus"),
                   _buildTips(),
@@ -38,83 +45,24 @@ class HomePage extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Container(
-          height: 80,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.purple, Colors.deepPurple],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(40),
-            ),
-          ),
-        ),
-
-        Positioned(
-          top: 30,
-          left: 20,
-          right: 20,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ClipOval(
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  "Open Nutri",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        buildFancyHeader(
+          "DécheTri",
+          logoPath: "assets/images/logo.png",
         ),
       ],
     );
   }
 
-
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
       style: const TextStyle(
-          fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+          fontSize: 20, fontWeight: FontWeight.bold, color:textColor),
     );
   }
 
   Widget _buildActions(BuildContext context) {
     final actions = [
-      {
-        "label": "Map",
-        "icon": Icons.map,
-        "onTap": () {
-          onMenuTap(2);
-        },
-      },
       {
         "label": "Déchets",
         "icon": Icons.delete,
@@ -123,10 +71,27 @@ class HomePage extends StatelessWidget {
         },
       },
       {
-        "label": "Favoris",
-        "icon": Icons.favorite,
+        "label": "Scan",
+        "icon": Icons.qr_code,
         "onTap": () {
-          onMenuTap(1);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ScanPage(),
+            ),
+          );
+        },
+      },
+      {
+        "label": "Map",
+        "icon": Icons.map,
+        "onTap": () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const LoginPage(),
+            ),
+          );
         },
       },
       {
@@ -152,7 +117,7 @@ class HomePage extends StatelessWidget {
             onTap: action["onTap"] as void Function()?,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.deepPurple.shade100,
+                color: backgroundColor,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
@@ -161,14 +126,14 @@ class HomePage extends StatelessWidget {
                   Icon(
                     action["icon"] as IconData,
                     size: 40,
-                    color: Colors.deepPurple,
+                    color: primaryColor,
                   ),
                   const SizedBox(height: 10),
                   Text(
                     action["label"] as String,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: primaryColor,
                     ),
                   ),
                 ],
@@ -179,6 +144,94 @@ class HomePage extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildRecentScans() {
+    final supabase = Supabase.instance.client;
+
+    return SizedBox(
+      height: 180,
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: supabase
+            .from('products')
+            .stream(primaryKey: ['id'])
+            .order('date_scan', ascending: false)
+            .limit(6),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("Aucun produit scanné récemment"));
+          }
+
+          final products = snapshot.data!;
+
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final prod = products[index];
+              return Container(
+                width: 140,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 6,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      child: prod["image_url"] != null && prod["image_url"].toString().isNotEmpty
+                          ? Image.network(
+                        prod["image_url"],
+                        height: 100,
+                        width: 140,
+                        fit: BoxFit.cover,
+                      )
+                          : Container(
+                        height: 100,
+                        width: 140,
+                        color: cardColor,
+                        child: const Icon(Icons.image_not_supported),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          Text(
+                            prod["name"] ?? "-",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            prod["barcode"] ?? "",
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
 
   Widget _buildTips() {
     final tips = [
