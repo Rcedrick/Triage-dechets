@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '../services/product_service.dart';
-import '../utils/color_utils.dart';       // 🎨 gestion des couleurs matériaux
-import '../utils/customise_utils.dart';  // 🎨 buildFancyHeader
+import '../utils/color_util.dart';       // 🎨 gestion des couleurs matériaux
+import '../utils/snackBar_util.dart';  // 🎨 buildFancyHeader
 import '../utils/theme_util.dart';
+import '../widgets/loading_widget.dart';
 import 'detailProduct_page.dart';
 
 class HistoryPage extends StatefulWidget {
-  final void Function(int) onMenuTap;
-  const HistoryPage({super.key, required this.onMenuTap});
+  const HistoryPage({super.key});
 
   @override
   State<HistoryPage> createState() => _HistoryPageState();
@@ -26,20 +26,18 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: buildCustomAppBar(context, "Historiques"),
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          // 🔹 En-tête stylisé
-          //buildFancyHeader("Mes Historiques"),
-
-          // 🔹 Contenu
+          buildFancyHeader("Mes Historiques"),
           Padding(
             padding: const EdgeInsets.only(top: 140, bottom: 80),
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: _futureHistory,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const LoadingScreen();
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(
@@ -73,11 +71,15 @@ class _HistoryPageState extends State<HistoryPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  DetailProductPage(barcode: prod["barcode"]),
+                              builder: (_) => DetailProductPage(barcode: prod["barcode"]),
                             ),
-                          );
+                          ).then((_) {
+                            setState(() {
+                              _futureHistory = _productService.fetchProductsWithThrownPackagings();
+                            });
+                          });
                         },
+
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Row(

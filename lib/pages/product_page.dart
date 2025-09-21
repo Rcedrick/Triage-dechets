@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/product_service.dart';
-import '../utils/color_utils.dart';       // 🎨 gestion des couleurs matériaux
-import '../utils/customise_utils.dart';  // 🎨 buildFancyHeader
-import '../utils/theme_util.dart';       // 🎨 background et cardColor
+import '../utils/color_util.dart';
+import '../utils/snackBar_util.dart';
+import '../utils/theme_util.dart';
+import '../widgets/SearchField_widget.dart';
+import '../widgets/loading_widget.dart';
 import 'detailProduct_page.dart';
 import 'scan_page.dart';
 
 class ProductPage extends StatefulWidget {
-  final void Function(int) onMenuTap;
-  const ProductPage({super.key, required this.onMenuTap});
+  const ProductPage({super.key});
 
   @override
   State<ProductPage> createState() => _ProductPageState();
@@ -29,210 +29,223 @@ class _ProductPageState extends State<ProductPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: buildCustomAppBar(context,"Déchets"),
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
-
+          buildFancyHeader("Mes Déchets"),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: "Rechercher un produit...",
-                hintStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 21,
+            padding: const EdgeInsets.only(top: 130, left: 8, right: 8),
+            child: Column(
+              children: [
+                buildSearchBar(
+                  hintText: "Rechercher un produit...",
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value.toLowerCase();
+                    });
+                  },
                 ),
-                suffixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding:
-                const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: const BorderSide(color: Colors.grey, width: 1),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value.toLowerCase();
-                });
-              },
-            ),
-          ),
 
-          // 📦 Liste produits
-          Padding(
-            padding: const EdgeInsets.only(top: 100, bottom: 80),
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _futureProducts,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "Aucun produit trouvé",
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  );
-                }
+                const SizedBox(height: 10),
 
-                // 🔎 Filtrage en fonction de la recherche
-                final products = snapshot.data!;
-                final filteredProducts = products.where((prod) {
-                  final name = (prod["name"] ?? "").toString().toLowerCase();
-                  final brand = (prod["brand"] ?? "").toString().toLowerCase();
-                  return name.contains(searchQuery) ||
-                      brand.contains(searchQuery);
-                }).toList();
+                Expanded(
+                  child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _futureProducts,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const LoadingScreen();
+                      }
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            "Aucun produit trouvé",
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        );
+                      }
 
-                if (filteredProducts.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "Aucun produit ne correspond à votre recherche",
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  );
-                }
+                      final products = snapshot.data!;
+                      final filteredProducts = products.where((prod) {
+                        final name = (prod["name"] ?? "").toString().toLowerCase();
+                        final brand = (prod["brand"] ?? "").toString().toLowerCase();
+                        return name.contains(searchQuery) || brand.contains(searchQuery);
+                      }).toList();
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  itemCount: filteredProducts.length,
-                  itemBuilder: (_, index) {
-                    final prod = filteredProducts[index];
-                    final packagings = prod["packagings"] as List;
+                      if (filteredProducts.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            "Aucun produit ne correspond à votre recherche",
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        );
+                      }
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      elevation: 3,
-                      color: cardColor,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(15),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  DetailProductPage(barcode: prod["barcode"]),
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        itemCount: filteredProducts.length,
+                        itemBuilder: (_, index) {
+                          final prod = filteredProducts[index];
+                          final packagings = prod["packagings"] as List;
+
+                          return Dismissible(
+                            key: ValueKey(prod["id"] ?? prod["barcode"]),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              color: primaryColor,
+                              child: const Icon(Icons.delete, color: Colors.white),
                             ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 🔹 Image produit
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: (prod["image_url"] != null &&
-                                    prod["image_url"]
-                                        .toString()
-                                        .isNotEmpty)
-                                    ? Image.network(
-                                  prod["image_url"],
-                                  width: 90,
-                                  height: 90,
-                                  fit: BoxFit.cover,
-                                )
-                                    : Container(
-                                  width: 90,
-                                  height: 90,
-                                  color: Colors.grey.shade200,
-                                  child: const Icon(
-                                    Icons.image_not_supported,
-                                    size: 40,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-
-                              // 🔹 Infos produit
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Nom produit
-                                    Text(
-                                      prod["name"] ?? "Sans nom",
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                            confirmDismiss: (direction) async {
+                              return await showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text("Confirmer"),
+                                  content: const Text("Voulez-vous supprimer ce produit ?"),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(ctx).pop(false),
+                                      child: const Text("Annuler", style: TextStyle(color: primaryColor)),
                                     ),
-                                    const SizedBox(height: 6),
-
-                                    // Marque
-                                    Text(
-                                      prod["brand"] ?? "Marque inconnue",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-
-                                    // 🔹 Liste horizontale des emballages
-                                    SizedBox(
-                                      height: 40,
-                                      child: ListView.builder(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: packagings.length,
-                                        itemBuilder: (_, i) {
-                                          final p = packagings[i];
-                                          final type =
-                                          p["material"]?["type"] as String?;
-                                          final color = getMaterialColor(type);
-
-                                          return Container(
-                                            margin: const EdgeInsets.only(
-                                                right: 12),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                CircleAvatar(
-                                                  radius: 8,
-                                                  backgroundColor: color,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  p["name"] ??
-                                                      type ??
-                                                      "Inconnu",
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
+                                    TextButton(
+                                      onPressed: () => Navigator.of(ctx).pop(true),
+                                      child: const Text("Supprimer", style: TextStyle(color: primaryColor)),
                                     ),
                                   ],
                                 ),
+                              );
+                            },
+                            onDismissed: (direction) async {
+                              final success = await _productService.deleteProduct(prod["id"]);
+                              if (success) {
+                                setState(() {
+                                  filteredProducts.removeAt(index);
+                                  _futureProducts = _productService.fetchProductsWithAllPackagings();
+                                });
+                                showCustomSnackBar(context, "Produit supprimé");
+                              } else {
+                                showCustomSnackBar(context, "Erreur lors de la suppression");
+                              }
+                            },
+                            child: Card(
+                              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+                              elevation: 3,
+                              color: cardColor,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(15),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => DetailProductPage(barcode: prod["barcode"]),
+                                    ),
+                                  ).then((_) {
+                                    setState(() {
+                                      _futureProducts = _productService.fetchProductsWithAllPackagings();
+                                    });
+                                  });
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: (prod["image_url"] != null &&
+                                            prod["image_url"].toString().isNotEmpty)
+                                            ? Image.network(
+                                          prod["image_url"],
+                                          width: 90,
+                                          height: 90,
+                                          fit: BoxFit.cover,
+                                        )
+                                            : Container(
+                                          width: 90,
+                                          height: 90,
+                                          color: Colors.grey.shade200,
+                                          child: const Icon(
+                                            Icons.image_not_supported,
+                                            size: 40,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              prod["name"] ?? "Sans nom",
+                                              style: const TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              prod["brand"] ?? "Marque inconnue",
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            SizedBox(
+                                              height: 40,
+                                              child: ListView.builder(
+                                                scrollDirection: Axis.horizontal,
+                                                itemCount: packagings.length,
+                                                itemBuilder: (_, i) {
+                                                  final p = packagings[i];
+                                                  final type = p["material"]?["type"] as String?;
+                                                  final color = getMaterialColor(type);
+
+                                                  return Container(
+                                                    margin: const EdgeInsets.only(right: 12),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        CircleAvatar(
+                                                          radius: 8,
+                                                          backgroundColor: color,
+                                                        ),
+                                                        const SizedBox(width: 6),
+                                                        Text(
+                                                          p["name"] ?? type ?? "Inconnu",
+                                                          style: const TextStyle(fontSize: 14),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // 📷 Bouton scan
           Positioned(
             bottom: 20,
             left: 0,
@@ -246,8 +259,11 @@ class _ProductPageState extends State<ProductPage> {
                     MaterialPageRoute(builder: (context) => const ScanPage()),
                   );
                 },
-                child: const Icon(Icons.qr_code_scanner,
-                    size: 32, color: Colors.white),
+                child: const Icon(
+                  Icons.qr_code_scanner,
+                  size: 32,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),

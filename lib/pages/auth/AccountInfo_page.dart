@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tri_dechets/pages/auth/information_page.dart';
-import '../../utils/customise_utils.dart';
+import '../../utils/snackBar_util.dart';
 import '../../utils/theme_util.dart';
 import 'login_page.dart';
 
@@ -50,7 +50,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     final email = user?.email ?? "Non défini";
 
     return Scaffold(
-      appBar: buildCustomAppBar("A-propos"),
+      appBar: buildCustomAppBar(context,"A-propos"),
       body: Stack(
         children: [
           buildFancyHeader("Mes infos"),

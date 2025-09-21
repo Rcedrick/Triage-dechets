@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 import '../utils/theme_util.dart';
+import '../widgets/icon_widget.dart';
 import 'auth/information_page.dart';
+import 'auth/login_page.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfilePageState extends State<ProfilePage> {
   final supabase = Supabase.instance.client;
   int _selectedIndex = 0;
 
@@ -27,36 +30,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
-    final response = await supabase
-        .from('users')
-        .select('code_postal, commune')
-        .eq('id', user.id)
-        .maybeSingle();
-
-    if (mounted) {
+    final data = await getCurrentUserData();
+    if (mounted && data != null) {
       setState(() {
-        codePostal = response?['code_postal'];
-        commune = response?['commune'];
-        avatarUrl = user.userMetadata?["avatar_url"];
-        displayName = user.userMetadata?["full_name"] ?? "Utilisateur";
-        email = user.email ?? "Non défini";
+        codePostal = data["codePostal"];
+        commune = data["commune"];
+        avatarUrl = data["avatarUrl"];
+        displayName = data["displayName"];
+        email = data["email"];
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ThemedScaffold(
-      title: "Mon Profil",
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.settings, color: Colors.black),
-          onPressed: () {},
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          "Mon Profil",
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: primaryColor),
         ),
-      ],
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            size: 35,
+            color: primaryColor,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        centerTitle: true,
+        backgroundColor: backgroundColor,
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.logout,
+              size: 30,
+              color: primaryColor,
+            ),
+            onPressed: () async {
+              await signOut();
+              if (!mounted) return;
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+            },
+          ),
+        ],
+      ),
+
+      backgroundColor: backgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -125,32 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'DécheTri',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: primaryColor,
-                width: 2,
-              ),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.eco,
-                color: primaryColor,
-                size: 18,
-              ),
-            ),
-          ),
+          buildEcoBadge("DécheTri", 16, 18),
         ],
       ),
     );
@@ -192,6 +189,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
 
   Widget _buildTabBar() {
     return Container(

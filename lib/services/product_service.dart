@@ -1,15 +1,14 @@
 import 'dart:convert';
-import 'dart:ui';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tri_dechets/services/translate_service.dart';
 import '../API/product/offProduct.dart';
-import '../models/packaging_model.dart';
 import '../models/product_model.dart';
+import '../utils/category_util.dart';
 
 class ProductService {
   final supabase = Supabase.instance.client;
-  /// Vérifie si un produit est déjà en base
+
   Future<ProductModel?> getProductFromDb(String barcode) async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
@@ -46,6 +45,14 @@ class ProductService {
 
   /// Sauvegarde le produit OFF + ses packagings dans Supabase
   Future<ProductModel> saveProductFromApi(OffProduct offProduct) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) throw Exception("Aucun utilisateur connecté");
+
+    final existing = await getProductFromDb(offProduct.code);
+    if (existing != null) {
+      return existing;
+    }
+
     final inserted = await supabase.from("products").insert({
       "name": offProduct.name,
       "barcode": offProduct.code,
@@ -53,44 +60,46 @@ class ProductService {
       "image_url": offProduct.imageUrl ?? "",
       "date_scan": DateTime.now().toIso8601String(),
       "to_throw": false,
-      "user_id": supabase.auth.currentUser?.id ?? "",
+      "user_id": user.id,
     }).select().single();
 
     final productId = inserted["id"].toString();
 
-    // Charger les matériaux existants
     final materialsRes = await supabase.from('materials').select('id,type');
     final materialsMap = {
       for (var m in materialsRes) (m['type'] as String).toLowerCase(): m['id']
     };
 
-    // Gérer les packagings
     if (offProduct.packagings != null) {
-      // APRÈS (✅ on itère directement sur les PackagingModel)
       for (final packaging in offProduct.packagings) {
         final rawMaterial = (packaging.material ?? "unknown")
             .replaceFirst(RegExp(r'^(en:|fr:)'), "");
         final recycling = packaging.recycling;
         final category = categorizeMaterial(rawMaterial, recycling);
-        final materialId = materialsMap[category];
+        final materialId = materialsMap[category]  ?? "unknown";
+        final rawName =
+        (packaging.shape ?? "").replaceFirst(RegExp(r'^(en:|fr:)'), "");
 
-        await supabase.from("packagings").insert({
+        final res = await supabase.from("packagings").insert({
           "product_id": productId,
-          "material": rawMaterial,
           "material_id": materialId,
-          "name": (packaging.shape ?? "").replaceFirst(RegExp(r'^(en:|fr:)'), ""),
+          "name": rawName,
           "number_of_units": packaging.numberOfUnits ?? 1,
           "quantity_per_unit_value": packaging.quantityPerUnitValue ?? 0,
           "quantity_per_unit": packaging.quantityPerUnit ?? "",
           "quantity_per_unit_unit": packaging.quantityPerUnitUnit ?? "",
           "weight_measured": packaging.weightMeasured ?? 0,
           "recycling": recycling ?? "",
-        });
+        }).select();
+
+        print("📦 Insert packaging result: $res");
+
       }
     }
 
     return ProductModel.fromJson(inserted, productId);
   }
+
 
   /// Vérifie en DB → sinon API → insère → retourne ProductModel
   Future<ProductModel?> getOrFetchProduct(String barcode) async {
@@ -144,31 +153,6 @@ class ProductService {
     }
   }
 
-  /// Catégorisation matériau
-  String categorizeMaterial(String? rawMaterial, String? recycling) {
-    if (rawMaterial == null) return "other";
-    final mat = rawMaterial.toLowerCase();
-
-    if (recycling != null && recycling.toLowerCase().contains("discard")) {
-      return "non-recyclable";
-    }
-    if (mat.contains("pp") || mat.contains("pet") || mat.contains("plastic") || mat.contains("poly")) {
-      return "plastic";
-    }
-    if (mat.contains("aluminium") || mat.contains("steel") || mat.contains("metal")) {
-      return "metal";
-    }
-    if (mat.contains("paper") || mat.contains("cardboard")) {
-      return "paper-or-cardboard";
-    }
-    if (mat.contains("glass")) {
-      return "glass";
-    }
-    if (mat.contains("non_recyclable") || mat.contains("non-biodegradable")) {
-      return "non-recyclable";
-    }
-    return "other";
-  }
 
   Future<bool?> updateToThrow(String packagingId, bool toThrow) async {
     try {
@@ -189,6 +173,10 @@ class ProductService {
   }
 
   Future<List<Map<String, dynamic>>> fetchProductsWithThrownPackagings() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      throw Exception("Aucun utilisateur connecté");
+    }
     try {
       final response = await supabase
           .from("products")
@@ -211,6 +199,7 @@ class ProductService {
               material:materials ( type )
             )
           """)
+          .eq('user_id', user.id)
           .order("date_scan", ascending: false);
 
       if (response == null || response is! List) {
@@ -237,6 +226,10 @@ class ProductService {
   }
 
   Future<List<Map<String, dynamic>>> fetchProductsWithAllPackagings() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      throw Exception("Aucun utilisateur connecté");
+    }
     try {
       final response = await supabase
           .from("products")
@@ -259,6 +252,7 @@ class ProductService {
             material:materials ( type )
           )
         """)
+          .eq('user_id', user.id)
           .order("date_scan", ascending: false);
 
       if (response == null || response is! List) {
@@ -280,8 +274,13 @@ class ProductService {
     }
   }
 
-
-
-
-
+  Future<bool> deleteProduct(String productId) async {
+    try {
+      await supabase.from("products").delete().eq("id", productId);
+      return true;
+    } catch (e) {
+      print("❌ Erreur suppression produit: $e");
+      return false;
+    }
+  }
 }

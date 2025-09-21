@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tri_dechets/utils/theme_util.dart';
 
-/// 🔹 SnackBar personnalisé
 void showCustomSnackBar(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -33,7 +32,7 @@ void showCustomSnackBar(BuildContext context, String message) {
                 Flexible(
                   child: Text(
                     message,
-                    style: const TextStyle(color: cardColor),
+                    style: const TextStyle(color: textColor),
                   ),
                 ),
               ],

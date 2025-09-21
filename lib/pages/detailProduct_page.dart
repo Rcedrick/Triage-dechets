@@ -1,10 +1,12 @@
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tri_dechets/pages/scan_page.dart';
 import '../models/product_model.dart';
 import '../API/product/offProduct.dart';
 import '../services/product_service.dart';
 import '../utils/theme_util.dart';
+import '../widgets/loading_widget.dart';
 
 class DetailProductPage extends StatefulWidget {
   final String barcode;
@@ -52,13 +54,28 @@ class _DetailProductPageState extends State<DetailProductPage> {
       future: _futureData,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
+          return const LoadingScreen();
         }
         if (!snapshot.hasData || snapshot.data == null) {
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const ScanPage()),
+              );
+            }
+          });
+
           return const Scaffold(
-              body: Center(child: Text("Produit introuvable")));
+            body: Center(
+              child: Text(
+                "Produit introuvable",
+                style: TextStyle(color: primaryColor, fontSize: 18),
+              ),
+            ),
+          );
         }
+
 
         final product = snapshot.data!["db"] as ProductModel?;
         final offProduct = snapshot.data!["off"] as OffProduct?;
@@ -66,7 +83,7 @@ class _DetailProductPageState extends State<DetailProductPage> {
         return DefaultTabController(
           length: 2,
           child: Scaffold(
-            appBar: buildCustomAppBar("Détail sur le produit"),
+            appBar: buildCustomAppBar(context,"Détail sur le produit"),
             backgroundColor: backgroundColor,
             body: Column(
               children: [
@@ -193,7 +210,7 @@ class _DetailProductPageState extends State<DetailProductPage> {
           .then((res) => (res as List).cast<Map<String, dynamic>>()),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const LoadingScreen();
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(
@@ -213,12 +230,16 @@ class _DetailProductPageState extends State<DetailProductPage> {
             final bool toThrow = p['to_throw'] ?? false;
 
             return Card(
+              color: cardColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 3,
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: ListTile(
                 leading: const Icon(Icons.inventory_2, color: primaryColor),
-                title: Text(p['name'] ?? "Sans nom"),
+                title: Text(p['name'] ?? "Sans nom", style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20
+                ),),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -233,6 +254,8 @@ class _DetailProductPageState extends State<DetailProductPage> {
                     return Switch(
                       value: p['to_throw'] ?? false,
                       activeColor: primaryColor,
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: Colors.grey,
                       onChanged: (newValue) async {
                         setState(() {
                           p['to_throw'] = newValue;

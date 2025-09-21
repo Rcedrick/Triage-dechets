@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tri_dechets/main.dart';
+import 'package:tri_dechets/pages/home_page.dart';
 import '../../models/user_model.dart';
-import '../../utils/customise_utils.dart';
+import '../../utils/snackBar_util.dart';
 import '../../utils/theme_util.dart';
+import '../../widgets/SearchField_widget.dart';
 
 class InformationPage extends StatefulWidget {
   const InformationPage({super.key});
@@ -75,7 +77,7 @@ class _InformationPageState extends State<InformationPage> {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => MainNavigation()),
+          MaterialPageRoute(builder: (_) => HomePage()),
               (Route<dynamic> route) => false,
         );
       }
@@ -92,26 +94,23 @@ class _InformationPageState extends State<InformationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: buildCustomAppBar("Informations"),
+      appBar: buildCustomAppBar(context,"Informations"),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
         child: Column(
           children: [
-            TextFormField(
-              controller: _communeController,
-              decoration: const InputDecoration(
-                labelText: "Commune",
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (value) {
-                fetchCommunes(value);
-              },
+            buildFancyHeader("Commune et Code postal"),
+            const SizedBox(height: 30),
+            buildSearchBar(
+              hintText: "Rechercher votre Commune...",
+              onChanged: (value) => fetchCommunes(value),
             ),
+
             const SizedBox(height: 16),
 
             Expanded(
               child: loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator(color: primaryColor))
                   : communes.isEmpty
                   ? const Center(child: Text("Aucune commune trouvée"))
                   : ListView.builder(

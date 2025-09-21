@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class TranslationService {
-  static const String _baseUrl = "https://libretranslate.com/translate";
+  static const String _baseUrl = "https://translate.astian.org/translate";
 
   static Future<String> translateToFrench(String text) async {
     if (text.trim().isEmpty) return text;
@@ -12,7 +12,7 @@ class TranslationService {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "q": text,
-        "source": "en",
+        "source": "auto",
         "target": "fr",
         "format": "text"
       }),

@@ -7,7 +7,7 @@ Color getMaterialColor(String? type) {
     case "metal":
       return Colors.grey;
     case "paper-or-cardboard":
-      return Colors.white;
+      return Colors.yellow;
     case "glass":
       return Colors.green;
     case "non-recyclable":

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// 🎨 Couleurs globales
-const Color primaryColor = Color(0xFF0B5309);
+//const Color primaryColor = Color(0xFF0B5309);
+const Color primaryColor = Color(0xFF3E8F3C);
 const Color backgroundColor = Color(0xFFF2FFF5);
 const Color textColor = Colors.black;
 const Color cardColor = Color(0xFFF2FFF5);
 
-/// 🎨 Textes
 const TextStyle titleTextStyle = TextStyle(
   fontSize: 24,
   fontWeight: FontWeight.bold,
@@ -18,7 +17,6 @@ const TextStyle subtitleTextStyle = TextStyle(
   color: Colors.grey,
 );
 
-/// 🔹 AppBar standard
 PreferredSizeWidget buildAppBar(BuildContext context, String title,
     {bool showBack = true, List<Widget>? actions}) {
   return AppBar(
@@ -39,7 +37,6 @@ PreferredSizeWidget buildAppBar(BuildContext context, String title,
   );
 }
 
-/// 🔹 Scaffold standard avec fond global
 class ThemedScaffold extends StatelessWidget {
   final String title;
   final Widget body;
@@ -65,14 +62,11 @@ class ThemedScaffold extends StatelessWidget {
 }
 
 
-
-/// 🔹 Bandeau d’en-tête stylisé avec couleur primaire de ton thème
 Widget buildFancyHeader(String title, {String? logoPath}) {
   return SizedBox(
     height: 120,
     child: Stack(
       children: [
-        // Bandeau principal avec couleur thème
         Container(
           height: 90,
           decoration: BoxDecoration(
@@ -126,8 +120,7 @@ Widget buildFancyHeader(String title, {String? logoPath}) {
                   title,
                   style: titleTextStyle.copyWith(
                     color: cardColor,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
                   ),
                 ),
               ],
@@ -138,10 +131,25 @@ Widget buildFancyHeader(String title, {String? logoPath}) {
     ),
   );
 }
-
-PreferredSizeWidget buildCustomAppBar(String titleText) {
+PreferredSizeWidget buildCustomAppBar(BuildContext context, String titleText) {
   return AppBar(
-    title: Text(titleText, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+    leading: GestureDetector(
+      onTap: () => Navigator.pop(context),
+      child: Row(
+        children: const [
+          SizedBox(width: 8),
+          Icon(Icons.arrow_back, size: 30, color: Colors.white),
+        ],
+      ),
+    ),
+    title: Text(
+      titleText,
+      style: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+        fontSize: 25,
+      ),
+    ),
     centerTitle: true,
     backgroundColor: Colors.transparent,
     elevation: 0,

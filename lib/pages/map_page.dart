@@ -3,11 +3,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../API/pointCollecte.dart';
+import '../API/map/pointCollecte.dart';
 import '../services/map_service.dart';
 import '../services/product_service.dart';
-import '../utils/customise_utils.dart';
+import '../utils/snackBar_util.dart';
 import '../utils/theme_util.dart';
+import '../widgets/loading_widget.dart';
+import 'package:geocoding/geocoding.dart';
 
 class MapPage extends StatefulWidget {
   final String codePostal;
@@ -27,7 +29,6 @@ class _MapPageState extends State<MapPage> {
   List<CollectionPoint> _stations = [];
   bool _loading = true;
   CollectionPoint? _selected;
-
   bool _showFilters = false;
   List<Map<String, dynamic>> _packagings = [];
 
@@ -35,12 +36,13 @@ class _MapPageState extends State<MapPage> {
     "glass": true,
     "plastic": true,
     "metal": true,
-    "paper-cardboard": true,
+    "paper-or-cardboard": true,
     "non-recyclable": true,
   };
 
   final _productService = ProductService();
   Map<String, BitmapDescriptor> _iconsCache = {};
+  LatLng? _initialPosition;
 
   @override
   void initState() {
@@ -50,19 +52,36 @@ class _MapPageState extends State<MapPage> {
 
   Future<void> _loadStations() async {
     try {
-      final l = await MapService.fetchStationsByPostal(widget.codePostal, widget.commune);
-
-      for (var station in l) {
+      final stations = await MapService.fetchStationsByPostal(widget.codePostal, widget.commune);
+      for (var station in stations) {
         _iconsCache[station.icone] = await _loadMarkerIcon(station.icone);
       }
 
+      LatLng initial;
+
+      if (stations.isNotEmpty) {
+        initial = LatLng(stations[0].latitude, stations[0].longitude);
+      } else {
+        try {
+          final locations = await locationFromAddress("${widget.codePostal} ${widget.commune}");
+          initial = LatLng(locations[0].latitude, locations[0].longitude);
+        } catch (_) {
+          initial = const LatLng(48.8566, 2.3522);
+        }
+      }
+
       setState(() {
-        _stations = l;
+        _stations = stations;
         _loading = false;
+        _initialPosition = initial;
       });
     } catch (e) {
       print('Erreur: $e');
-      setState(() => _loading = false);
+      setState(() {
+        _stations = [];
+        _loading = false;
+        _initialPosition = const LatLng(48.8566, 2.3522);
+      });
     }
   }
 
@@ -80,7 +99,7 @@ class _MapPageState extends State<MapPage> {
         return "Plastique";
       case "metal":
         return "Métal";
-      case "paper-cardboard":
+      case "paper-or-cardboard":
         return "Papier/Carton";
       case "non-recyclable":
         return "Non recyclable";
@@ -100,7 +119,7 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  Future<BitmapDescriptor> _loadMarkerIcon(String assetPath, {int size = 140}) async {
+  Future<BitmapDescriptor> _loadMarkerIcon(String assetPath, {int size = 90}) async {
     final ByteData data = await rootBundle.load(assetPath);
     final Uint8List bytes = data.buffer.asUint8List();
 
@@ -117,13 +136,12 @@ class _MapPageState extends State<MapPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (_loading || _initialPosition == null) return const LoadingScreen();
 
     final filtered = _filteredStations;
 
     return Scaffold(
+      appBar: buildCustomAppBar(context, "Points de Collecte"),
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
@@ -131,8 +149,8 @@ class _MapPageState extends State<MapPage> {
             initialCameraPosition: CameraPosition(
               target: filtered.isNotEmpty
                   ? LatLng(filtered[0].latitude, filtered[0].longitude)
-                  : const LatLng(48.8566, 2.3522),
-              zoom: 13,
+                  : _initialPosition!,
+              zoom: 16,
             ),
             markers: filtered.map((s) {
               return Marker(
@@ -155,9 +173,7 @@ class _MapPageState extends State<MapPage> {
             child: FloatingActionButton(
               backgroundColor: primaryColor,
               child: const Icon(Icons.filter_list, color: cardColor),
-              onPressed: () {
-                setState(() => _showFilters = !_showFilters);
-              },
+              onPressed: () => setState(() => _showFilters = !_showFilters),
             ),
           ),
 
@@ -175,19 +191,16 @@ class _MapPageState extends State<MapPage> {
                       CheckboxListTile(
                         title: const Text("Tous"),
                         value: !_filters.values.contains(false),
-                        onChanged: (val) {
-                          setState(() {
-                            _filters.updateAll((key, value) => val ?? true);
-                          });
-                        },
+                        activeColor: primaryColor,
+                        onChanged: (val) =>
+                            setState(() => _filters.updateAll((key, value) => val ?? true)),
                       ),
                       ..._filters.keys.map((type) {
                         return CheckboxListTile(
                           title: Text(_typeLabel(type)),
+                          activeColor: primaryColor,
                           value: _filters[type],
-                          onChanged: (val) {
-                            setState(() => _filters[type] = val ?? true);
-                          },
+                          onChanged: (val) => setState(() => _filters[type] = val ?? true),
                         );
                       }).toList(),
                     ],
@@ -203,6 +216,12 @@ class _MapPageState extends State<MapPage> {
               child: SizedBox(
                 width: 220,
                 child: Card(
+                  color: Colors.white,
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: primaryColor, width: 1.5),
+                  ),
                   margin: const EdgeInsets.all(8),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -214,19 +233,24 @@ class _MapPageState extends State<MapPage> {
                           width: 40,
                           height: 40,
                           errorBuilder: (ctx, error, stack) =>
-                          const Icon(Icons.location_on, size: 40),
+                          const Icon(Icons.location_on, size: 40, color: primaryColor),
                         ),
                         const SizedBox(height: 8),
                         Text(_selected!.nom,
                             style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text(_selected!.adresse),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.black87)),
+                        Text(_selected!.adresse, style: const TextStyle(color: Colors.grey)),
                         const SizedBox(height: 4),
-                        Text('Types: ${_selected!.types.map(_typeLabel).join(", ")}'),
+                        Text('Types: ${_selected!.types.map(_typeLabel).join(", ")}',
+                            style: const TextStyle(color: Colors.black54)),
                         Text('Code postal: ${_selected!.codePostal}'),
                         Text(_selected!.description,
                             style: const TextStyle(
-                                fontStyle: FontStyle.italic, fontSize: 12)),
+                                fontStyle: FontStyle.italic,
+                                fontSize: 12,
+                                color: Colors.black54)),
                       ],
                     ),
                   ),
@@ -262,35 +286,24 @@ class _MapPageState extends State<MapPage> {
                         margin: const EdgeInsets.all(8),
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                          color: cardColor,
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                          ],
+                          border: Border.all(color: primaryColor.withOpacity(0.5), width: 1.2),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              product["name"] ?? "-",
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                            Text(product["name"] ?? "-", style: const TextStyle(fontWeight: FontWeight.bold)),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 if (product["image_url"] != null)
-                                  Image.network(
-                                    product["image_url"],
-                                    height: 60,
-                                    width: 120,
-                                    fit: BoxFit.cover,
-                                  )
+                                  Image.network(product["image_url"], height: 60, width: 120, fit: BoxFit.cover)
                                 else
-                                  Container(
-                                    height: 60,
-                                    width: 120,
-                                    color: Colors.grey.shade200,
-                                    child: const Icon(Icons.image_not_supported),
-                                  ),
-
+                                  Container(height: 60, width: 120, color: Colors.grey.shade200, child: const Icon(Icons.image_not_supported)),
                                 StatefulBuilder(
                                   builder: (context, setStateSwitch) {
                                     return Switch(
@@ -298,24 +311,16 @@ class _MapPageState extends State<MapPage> {
                                       activeColor: primaryColor,
                                       onChanged: (newValue) async {
                                         setStateSwitch(() => p["to_throw"] = newValue);
-
-                                        final confirmedValue =
-                                        await _productService.updateToThrow(p["id"], newValue);
-
+                                        final confirmedValue = await _productService.updateToThrow(p["id"], newValue);
                                         if (confirmedValue != null) {
                                           setState(() => p["to_throw"] = confirmedValue);
                                           if (!mounted) return;
-                                          showCustomSnackBar(
-                                            context,
-                                            confirmedValue
-                                                ? "Emballage jeté "
-                                                : "Emballage non jeté ",
-                                          );
+                                          showCustomSnackBar(context,
+                                              confirmedValue ? "Emballage jeté " : "Emballage non jeté ");
                                         } else {
                                           setStateSwitch(() => p["to_throw"] = !newValue);
                                           if (!mounted) return;
-                                          showCustomSnackBar(
-                                              context, "Erreur lors de la mise à jour");
+                                          showCustomSnackBar(context, "Erreur lors de la mise à jour");
                                         }
                                       },
                                     );
@@ -323,21 +328,14 @@ class _MapPageState extends State<MapPage> {
                                 ),
                               ],
                             ),
-
                             const SizedBox(height: 6),
-
                             RichText(
                               text: TextSpan(
-                                style: const TextStyle(color: Colors.black), // style par défaut
+                                style: const TextStyle(color: Colors.black),
                                 children: [
                                   const TextSpan(text: "Emballage: "),
-                                  TextSpan(
-                                    text: p["name"] ?? "-",
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  TextSpan(
-                                    text: "  $numberOfUnits × $qpu ($packagingMaterial: $weightMeasured g)",
-                                  ),
+                                  TextSpan(text: p["name"] ?? "-", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  TextSpan(text: "  $numberOfUnits × $qpu ($packagingMaterial: $weightMeasured g)"),
                                 ],
                               ),
                             ),
@@ -346,14 +344,10 @@ class _MapPageState extends State<MapPage> {
                                 style: const TextStyle(color: Colors.black),
                                 children: [
                                   const TextSpan(text: "Matériau: "),
-                                  TextSpan(
-                                    text: material["type"] ?? "-",
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
+                                  TextSpan(text: material["type"] ?? "-", style: const TextStyle(fontWeight: FontWeight.bold)),
                                 ],
                               ),
                             ),
-
                           ],
                         ),
                       );

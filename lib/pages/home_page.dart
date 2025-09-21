@@ -1,229 +1,282 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:tri_dechets/pages/scan_page.dart';
 import '../utils/theme_util.dart';
-import 'auth/login_page.dart';
+import '../widgets/icon_widget.dart';
+import '../widgets/loading_widget.dart';
+import 'scan_page.dart';
+import 'profile_page.dart';
+import 'product_page.dart';
+import 'map_page.dart';
+import 'history_page.dart';
+import '../services/auth_service.dart';
 
 class HomePage extends StatelessWidget {
-  final Function(int) onMenuTap;
-  const HomePage({super.key, required this.onMenuTap});
+  const HomePage({super.key});
+
+  AppBar buildCustomAppBar(BuildContext context) {
+    return AppBar(
+      leading: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ProfilePage()),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            radius: 18,
+            backgroundImage: (Supabase.instance.client.auth.currentUser?.userMetadata?["avatar_url"]) != null
+                ? NetworkImage(Supabase.instance.client.auth.currentUser!.userMetadata!["avatar_url"])
+                : null,
+            backgroundColor: primaryColor,
+            child: (Supabase.instance.client.auth.currentUser?.userMetadata?["avatar_url"]) == null
+                ? const Icon(Icons.person, color: Colors.white)
+                : null,
+          ),
+        ),
+      ),
+      title: const Text(
+        "Accueil",
+        style: TextStyle(
+          fontSize: 25,
+          fontWeight: FontWeight.bold,
+          color: primaryColor,
+        ),
+      ),
+      centerTitle: true,
+      backgroundColor: backgroundColor,
+      elevation: 0,
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildBanner(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+      appBar: buildCustomAppBar(context),
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: FutureBuilder<Map<String, dynamic>?>(
+          future: getCurrentUserData(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const LoadingScreen();
+            }
+
+            if (!snapshot.hasData || snapshot.data == null) {
+              return const Center(child: Text("Impossible de charger vos informations."));
+            }
+
+            final userData = snapshot.data!;
+            final codePostal = userData["codePostal"] ?? "";
+            final commune = userData["commune"] ?? "";
+
+            return SingleChildScrollView(
+
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+
                 children: [
                   const SizedBox(height: 40),
-                  _buildSectionTitle("Actions à faire"),
-                  _buildActions(context),
-
-                  const SizedBox(height: 20),
-                  _buildSectionTitle("Produits scannés récemment"),
-                  _buildRecentScans(),
-
-                  const SizedBox(height: 20),
-                  _buildSectionTitle("Astuces & Actus"),
-                  _buildTips(),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBanner() {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        buildFancyHeader(
-          "DécheTri",
-          logoPath: "assets/images/logo.png",
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-          fontSize: 20, fontWeight: FontWeight.bold, color:textColor),
-    );
-  }
-
-  Widget _buildActions(BuildContext context) {
-    final actions = [
-      {
-        "label": "Déchets",
-        "icon": Icons.delete,
-        "onTap": () {
-          onMenuTap(1);
-        },
-      },
-      {
-        "label": "Scan",
-        "icon": Icons.qr_code,
-        "onTap": () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const ScanPage(),
-            ),
-          );
-        },
-      },
-      {
-        "label": "Map",
-        "icon": Icons.map,
-        "onTap": () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const LoginPage(),
-            ),
-          );
-        },
-      },
-      {
-        "label": "Historique",
-        "icon": Icons.history,
-        "onTap": () {
-          onMenuTap(3);
-        },
-      },
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: GridView.count(
-        shrinkWrap: true,
-        crossAxisCount: 4,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 1,
-        physics: const NeverScrollableScrollPhysics(),
-        children: actions.map((action) {
-          return GestureDetector(
-            onTap: action["onTap"] as void Function()?,
-            child: Container(
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    action["icon"] as IconData,
-                    size: 40,
-                    color: primaryColor,
+                  Row(
+                    children: [
+                      const SizedBox(width: 20),
+                      buildEcoBadge("DécheTri", 28, 25),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    action["label"] as String,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
+                  const SizedBox(height: 30),
+
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ScanPage()),
+                      );
+                    },
+
+                    child: Container(
+                      height: 130,
+                      width: double.infinity,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(
+                        color: primaryColor,
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.camera_alt, color: Colors.white, size: 34),
+                          SizedBox(width: 10),
+                          Text(
+                            "Scanner un produit",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        ],
+                      ),
                     ),
                   ),
+
+                  const SizedBox(height: 20),
+                  const Text("Action à faire",style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    children: [
+                      _buildMenuItem(
+                        Image.asset("assets/images/dechet.png", height: 200),
+                        "Mes Déchets",
+                            () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ProductPage()),
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        Image.asset("assets/images/scanner.png", height: 200),
+                        "Scanner",
+                            () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ScanPage()),
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        Image.asset("assets/images/map.png", height: 200),
+                        "Points de Collecte",
+                            () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MapPage(
+                                codePostal: codePostal,
+                                commune: commune,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        Image.asset("assets/images/history.png", height: 200),
+                        "Historique",
+                            () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const HistoryPage()),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  const Text(
+                    "Produits scannés récemment",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _buildRecentScans(),
                 ],
               ),
-            ),
-          );
-        }).toList(),
+            );
+          },
+        ),
       ),
     );
   }
+
+  Widget _buildMenuItem(Widget iconWidget, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(12),
+        height: 140,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              height: 60,
+              child: iconWidget,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildRecentScans() {
     final supabase = Supabase.instance.client;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      throw Exception("Aucun utilisateur connecté");
+    }
 
     return SizedBox(
-      height: 180,
+      height: 70,
       child: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase
             .from('products')
             .stream(primaryKey: ['id'])
+            .eq('user_id',user.id )
             .order('date_scan', ascending: false)
             .limit(6),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Aucun produit scanné récemment"));
+          if (!snapshot.hasData) {
+            return const LoadingScreen();
           }
 
           final products = snapshot.data!;
+          if (products.isEmpty) {
+            return const Center(child: Text("Aucun produit scanné récemment"));
+          }
 
-          return ListView.builder(
+          return ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: products.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final prod = products[index];
-              return Container(
-                width: 140,
-                margin: const EdgeInsets.only(right: 12),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 6,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: prod["image_url"] != null && prod["image_url"].toString().isNotEmpty
-                          ? Image.network(
-                        prod["image_url"],
-                        height: 100,
-                        width: 140,
-                        fit: BoxFit.cover,
-                      )
-                          : Container(
-                        height: 100,
-                        width: 140,
-                        color: cardColor,
-                        child: const Icon(Icons.image_not_supported),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            prod["name"] ?? "-",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            prod["barcode"] ?? "",
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              return _buildProductItem(
+                prod["name"] ?? "-",
+                prod["image_url"] ??
+                    "https://via.placeholder.com/100x100.png?text=No+Image",
               );
             },
           );
@@ -232,71 +285,41 @@ class HomePage extends StatelessWidget {
     );
   }
 
-
-  Widget _buildTips() {
-    final tips = [
-      {
-        "title": " Bien lire les étiquettes",
-        "content": """
-Prendre le temps de lire les étiquettes permet de mieux contrôler ce que l’on mange.
-• Vérifiez la liste des ingrédients : le premier est celui présent en plus grande quantité.
-• Surveillez les additifs, allergènes et sucres ajoutés.
-• Comparez les valeurs nutritionnelles pour choisir le produit le plus sain.
-"""
-      },
-      {
-        "title": " Choisir Bio, pourquoi ?",
-        "content": """
-Les produits bio sont cultivés sans pesticides chimiques de synthèse ni OGM.
-• Ils respectent l’environnement et la biodiversité.
-• Ils soutiennent une agriculture plus durable.
-• Ils contiennent souvent moins de résidus chimiques.
-"""
-      },
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ...tips.map((tip) {
-          return Card(
-            child: ExpansionTile(
-              leading: const Icon(Icons.lightbulb, color: Colors.yellow),
-              title: Text(
-                tip['title']!,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Text(
-                    tip['content']!,
-                    style: const TextStyle(color: Colors.black87),
-                  ),
-                ),
-              ],
+  Widget _buildProductItem(String name, String imageUrl) {
+    return Container(
+      height: 150,
+      width: 300,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          Image.network(imageUrl, width: 80, height: 140, fit: BoxFit.cover),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              overflow: TextOverflow.ellipsis,
             ),
-          );
-        }).toList(),
-
-        const SizedBox(height: 30),
-
-        const Text(
-          "À propos de cette application",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
           ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          "Cette application vous aide à scanner, comprendre et comparer vos produits alimentaires "
-              "pour faire des choix plus sains et responsables au quotidien.\n"
-              "Informations, conseils et astuces sont mis à votre disposition pour mieux consommer.",
-          style: TextStyle(color: Colors.black87, height: 1.4),
-        ),
-      ],
+          const SizedBox(width: 8),
+          const Icon(
+            Icons.arrow_forward_ios_sharp,
+            size: 30,
+            color: Colors.black,
+          ),
+        ],
+      ),
     );
   }
 }
