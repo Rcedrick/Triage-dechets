@@ -335,7 +335,7 @@ class _MapPageState extends State<MapPage> {
                                 children: [
                                   const TextSpan(text: "Emballage: "),
                                   TextSpan(text: p["name"] ?? "-", style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  TextSpan(text: "  $numberOfUnits × $qpu ($packagingMaterial: $weightMeasured g)"),
+                                  TextSpan(text: "  $numberOfUnits × $qpu ($packagingMaterial)"),
                                 ],
                               ),
                             ),

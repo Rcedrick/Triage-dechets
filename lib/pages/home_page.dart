@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/color_util.dart';
 import '../utils/theme_util.dart';
 import '../widgets/icon_widget.dart';
 import '../widgets/loading_widget.dart';
@@ -63,28 +64,24 @@ class HomePage extends StatelessWidget {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const LoadingScreen();
             }
-
             if (!snapshot.hasData || snapshot.data == null) {
               return const Center(child: Text("Impossible de charger vos informations."));
             }
-
             final userData = snapshot.data!;
             final codePostal = userData["codePostal"] ?? "";
             final commune = userData["commune"] ?? "";
 
             return SingleChildScrollView(
-
               child: Column(
-
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 60),
                   Row(
                     children: [
                       const SizedBox(width: 20),
                       buildEcoBadge("DécheTri", 28, 25),
                     ],
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 50),
 
                   GestureDetector(
                     onTap: () {
@@ -121,9 +118,9 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 40),
                   const Text("Action à faire",style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 40),
 
                   GridView.count(
                     crossAxisCount: 2,
@@ -131,9 +128,11 @@ class HomePage extends StatelessWidget {
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
+                    childAspectRatio: 1.5,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     children: [
                       _buildMenuItem(
-                        Image.asset("assets/images/dechet.png", height: 200),
+                        Image.asset("assets/images/dechet.png", height: 100),
                         "Mes Déchets",
                             () {
                           Navigator.push(
@@ -143,7 +142,7 @@ class HomePage extends StatelessWidget {
                         },
                       ),
                       _buildMenuItem(
-                        Image.asset("assets/images/scanner.png", height: 200),
+                        Image.asset("assets/images/scanner.png", height: 60),
                         "Scanner",
                             () {
                           Navigator.push(
@@ -153,7 +152,7 @@ class HomePage extends StatelessWidget {
                         },
                       ),
                       _buildMenuItem(
-                        Image.asset("assets/images/map.png", height: 200),
+                        Image.asset("assets/images/map.png", height: 60),
                         "Points de Collecte",
                             () {
                           Navigator.push(
@@ -168,7 +167,7 @@ class HomePage extends StatelessWidget {
                         },
                       ),
                       _buildMenuItem(
-                        Image.asset("assets/images/history.png", height: 200),
+                        Image.asset("assets/images/history.png", height: 60),
                         "Historique",
                             () {
                           Navigator.push(
@@ -180,7 +179,34 @@ class HomePage extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 30),
+
+                  const SizedBox(height: 40),
+                  const Text(
+                    "Code couleur",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Wrap(
+                      spacing: 20, // espace horizontal entre items
+                      runSpacing: 8, // espace vertical si ça passe à la ligne
+                      children: [
+                        _buildLegendItem("plastic", "Plastique"),
+                        _buildLegendItem("metal", "Métal"),
+                        _buildLegendItem("paper-or-cardboard", "Papier/Carton"),
+                        _buildLegendItem("glass", "Verre"),
+                        _buildLegendItem("non-recyclable", "Non recyclable"),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
 
                   const Text(
                     "Produits scannés récemment",
@@ -189,6 +215,7 @@ class HomePage extends StatelessWidget {
                       fontSize: 18,
                     ),
                   ),
+
                   const SizedBox(height: 16),
 
                   _buildRecentScans(),
@@ -284,6 +311,25 @@ class HomePage extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildLegendItem(String type, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 8,
+          backgroundColor: getMaterialColor(type),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+
 
   Widget _buildProductItem(String name, String imageUrl) {
     return Container(

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:tri_dechets/services/translate_service.dart';
+import 'package:tri_dechets/services/translation_service.dart';
 import '../API/product/offProduct.dart';
 import '../models/product_model.dart';
 import '../utils/category_util.dart';
@@ -76,15 +76,24 @@ class ProductService {
             .replaceFirst(RegExp(r'^(en:|fr:)'), "");
         final recycling = packaging.recycling;
         final category = categorizeMaterial(rawMaterial, recycling);
-        final materialId = materialsMap[category]  ?? "unknown";
-        final rawName =
-        (packaging.shape ?? "").replaceFirst(RegExp(r'^(en:|fr:)'), "");
+        final materialId = materialsMap[category] ?? "unknown";
+
+        String rawName = (packaging.shape ?? "")
+            .replaceFirst(RegExp(r'^(en:|fr:)'), "");
+
+        String materialName = (packaging.material ?? "")
+            .replaceFirst(RegExp(r'^(en:|fr:)'), "");
+
+        final translatedName = await TranslationService.translateSafe(rawName);
+
+        final translatedMaterial = await TranslationService.translateSafe(materialName);
 
         final res = await supabase.from("packagings").insert({
           "product_id": productId,
           "material_id": materialId,
-          "name": rawName,
+          "name": translatedName,
           "number_of_units": packaging.numberOfUnits ?? 1,
+          "material": translatedMaterial,
           "quantity_per_unit_value": packaging.quantityPerUnitValue ?? 0,
           "quantity_per_unit": packaging.quantityPerUnit ?? "",
           "quantity_per_unit_unit": packaging.quantityPerUnitUnit ?? "",
@@ -93,7 +102,6 @@ class ProductService {
         }).select();
 
         print("📦 Insert packaging result: $res");
-
       }
     }
 
