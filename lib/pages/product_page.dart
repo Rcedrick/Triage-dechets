@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/product_service.dart';
-import '../utils/color_util.dart';
+import '../utils/material_categories.dart';
 import '../utils/snackBar_util.dart';
 import '../utils/theme_util.dart';
 import '../widgets/SearchField_widget.dart';
@@ -27,9 +27,18 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Chaque fois qu’on revient sur la page → refresh
+    setState(() {
+      _futureProducts = _productService.fetchProductsWithAllPackagings();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: buildCustomAppBar(context,"Déchets"),
+      appBar: buildCustomAppBar(context, "Déchets"),
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
@@ -46,7 +55,6 @@ class _ProductPageState extends State<ProductPage> {
                     });
                   },
                 ),
-
                 const SizedBox(height: 10),
 
                 Expanded(
@@ -206,8 +214,7 @@ class _ProductPageState extends State<ProductPage> {
                                                 itemBuilder: (_, i) {
                                                   final p = packagings[i];
                                                   final type = p["material"]?["type"] as String?;
-                                                  final color = getMaterialColor(type);
-
+                                                  final color = MaterialCategories.getCategoryColor(type ?? "other");
                                                   return Container(
                                                     margin: const EdgeInsets.only(right: 12),
                                                     child: Row(
@@ -257,7 +264,11 @@ class _ProductPageState extends State<ProductPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const ScanPage()),
-                  );
+                  ).then((_) {
+                    setState(() {
+                      _futureProducts = _productService.fetchProductsWithAllPackagings();
+                    });
+                  });
                 },
                 child: const Icon(
                   Icons.qr_code_scanner,

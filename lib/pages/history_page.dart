@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/product_service.dart';
-import '../utils/color_util.dart';       // 🎨 gestion des couleurs matériaux
-import '../utils/snackBar_util.dart';  // 🎨 buildFancyHeader
+import '../utils/material_categories.dart';
 import '../utils/theme_util.dart';
 import '../widgets/loading_widget.dart';
 import 'detailProduct_page.dart';
@@ -30,7 +29,7 @@ class _HistoryPageState extends State<HistoryPage> {
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          buildFancyHeader("Mes Historiques"),
+          buildFancyHeader("Mes emballages jetés"),
           Padding(
             padding: const EdgeInsets.only(top: 140, bottom: 80),
             child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -56,6 +55,8 @@ class _HistoryPageState extends State<HistoryPage> {
                   itemBuilder: (_, index) {
                     final prod = historyProducts[index];
                     final packagings = prod["packagings"] as List;
+                    final total = prod["total_packagings"] ?? 0;
+                    final thrown = prod["thrown_count"] ?? 0;
 
                     return Card(
                       margin: const EdgeInsets.symmetric(
@@ -85,7 +86,6 @@ class _HistoryPageState extends State<HistoryPage> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // 🔹 Image produit
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: (prod["image_url"] != null &&
@@ -109,12 +109,10 @@ class _HistoryPageState extends State<HistoryPage> {
                               ),
                               const SizedBox(width: 12),
 
-                              // 🔹 Infos produit
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Nom produit
                                     Text(
                                       prod["name"] ?? "Sans nom",
                                       style: const TextStyle(
@@ -126,16 +124,16 @@ class _HistoryPageState extends State<HistoryPage> {
                                     ),
                                     const SizedBox(height: 6),
 
-                                    const Text(
-                                      "Emballages jetés :",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
+                                    Text(
+                                      "${prod["thrown_count"]}/${prod["total_packagings"]} emballages jetés",
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontStyle: FontStyle.italic,
+                                        color: Colors.grey,
                                       ),
                                     ),
                                     const SizedBox(height: 6),
 
-                                    // 🔹 Liste horizontale des emballages
                                     SizedBox(
                                       height: 40,
                                       child: ListView.builder(
@@ -145,7 +143,8 @@ class _HistoryPageState extends State<HistoryPage> {
                                           final p = packagings[i];
                                           final type =
                                           p["material"]?["type"] as String?;
-                                          final color = getMaterialColor(type);
+                                          final color = MaterialCategories.getCategoryColor(type ?? "other");
+
 
                                           return Container(
                                             margin: const EdgeInsets.only(

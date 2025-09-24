@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../utils/color_util.dart';
+import '../utils/material_categories.dart';
 import '../utils/theme_util.dart';
 import '../widgets/icon_widget.dart';
 import '../widgets/loading_widget.dart';
@@ -11,8 +11,30 @@ import 'map_page.dart';
 import 'history_page.dart';
 import '../services/auth_service.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late Future<Map<String, dynamic>?> _futureUserData;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureUserData = getCurrentUserData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Chaque fois qu’on revient sur cette page → refresh des données
+    setState(() {
+      _futureUserData = getCurrentUserData();
+    });
+  }
 
   AppBar buildCustomAppBar(BuildContext context) {
     return AppBar(
@@ -21,7 +43,11 @@ class HomePage extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const ProfilePage()),
-          );
+          ).then((_) {
+            setState(() {
+              _futureUserData = getCurrentUserData();
+            });
+          });
         },
         child: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -51,7 +77,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,7 +84,7 @@ class HomePage extends StatelessWidget {
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: FutureBuilder<Map<String, dynamic>?>(
-          future: getCurrentUserData(),
+          future: _futureUserData,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const LoadingScreen();
@@ -88,9 +113,12 @@ class HomePage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const ScanPage()),
-                      );
+                      ).then((_) {
+                        setState(() {
+                          _futureUserData = getCurrentUserData();
+                        });
+                      });
                     },
-
                     child: Container(
                       height: 130,
                       width: double.infinity,
@@ -119,7 +147,7 @@ class HomePage extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 40),
-                  const Text("Action à faire",style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  const Text("Action à faire", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 40),
 
                   GridView.count(
@@ -138,7 +166,11 @@ class HomePage extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const ProductPage()),
-                          );
+                          ).then((_) {
+                            setState(() {
+                              _futureUserData = getCurrentUserData();
+                            });
+                          });
                         },
                       ),
                       _buildMenuItem(
@@ -148,7 +180,11 @@ class HomePage extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const ScanPage()),
-                          );
+                          ).then((_) {
+                            setState(() {
+                              _futureUserData = getCurrentUserData();
+                            });
+                          });
                         },
                       ),
                       _buildMenuItem(
@@ -163,7 +199,11 @@ class HomePage extends StatelessWidget {
                                 commune: commune,
                               ),
                             ),
-                          );
+                          ).then((_) {
+                            setState(() {
+                              _futureUserData = getCurrentUserData();
+                            });
+                          });
                         },
                       ),
                       _buildMenuItem(
@@ -173,12 +213,15 @@ class HomePage extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const HistoryPage()),
-                          );
+                          ).then((_) {
+                            setState(() {
+                              _futureUserData = getCurrentUserData();
+                            });
+                          });
                         },
                       ),
                     ],
                   ),
-
 
                   const SizedBox(height: 40),
                   const Text(
@@ -190,21 +233,17 @@ class HomePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 40),
 
-
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Wrap(
-                      spacing: 20, // espace horizontal entre items
-                      runSpacing: 8, // espace vertical si ça passe à la ligne
-                      children: [
-                        _buildLegendItem("plastic", "Plastique"),
-                        _buildLegendItem("metal", "Métal"),
-                        _buildLegendItem("paper-or-cardboard", "Papier/Carton"),
-                        _buildLegendItem("glass", "Verre"),
-                        _buildLegendItem("non-recyclable", "Non recyclable"),
-                      ],
+                      spacing: 20,
+                      runSpacing: 8,
+                      children: MaterialCategories.all.map((category) {
+                        return _buildLegendItem(category);
+                      }).toList(),
                     ),
                   ),
+
 
                   const SizedBox(height: 40),
 
@@ -249,10 +288,7 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              height: 60,
-              child: iconWidget,
-            ),
+            SizedBox(height: 60, child: iconWidget),
             const SizedBox(height: 10),
             Text(
               label,
@@ -267,7 +303,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-
   Widget _buildRecentScans() {
     final supabase = Supabase.instance.client;
     final user = Supabase.instance.client.auth.currentUser;
@@ -281,7 +316,7 @@ class HomePage extends StatelessWidget {
         stream: supabase
             .from('products')
             .stream(primaryKey: ['id'])
-            .eq('user_id',user.id )
+            .eq('user_id', user.id)
             .order('date_scan', ascending: false)
             .limit(6),
         builder: (context, snapshot) {
@@ -302,8 +337,7 @@ class HomePage extends StatelessWidget {
               final prod = products[index];
               return _buildProductItem(
                 prod["name"] ?? "-",
-                prod["image_url"] ??
-                    "https://via.placeholder.com/100x100.png?text=No+Image",
+                prod["image_url"] ?? "https://via.placeholder.com/100x100.png?text=No+Image",
               );
             },
           );
@@ -312,24 +346,22 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildLegendItem(String type, String label) {
+  Widget _buildLegendItem(MaterialCategory category) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         CircleAvatar(
           radius: 8,
-          backgroundColor: getMaterialColor(type),
+          backgroundColor: category.color,
         ),
         const SizedBox(width: 6),
         Text(
-          label,
+          category.name,
           style: const TextStyle(fontSize: 14),
         ),
       ],
     );
   }
-
-
 
   Widget _buildProductItem(String name, String imageUrl) {
     return Container(
@@ -359,11 +391,7 @@ class HomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          const Icon(
-            Icons.arrow_forward_ios_sharp,
-            size: 30,
-            color: Colors.black,
-          ),
+          const Icon(Icons.arrow_forward_ios_sharp, size: 30, color: Colors.black),
         ],
       ),
     );

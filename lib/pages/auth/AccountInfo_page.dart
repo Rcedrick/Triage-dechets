@@ -16,6 +16,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   final supabase = Supabase.instance.client;
   String? codePostal;
   String? commune;
+  String? name;
+  String? avatar;
 
   @override
   void initState() {
@@ -29,7 +31,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
 
     final response = await supabase
         .from('users')
-        .select('code_postal, commune')
+        .select('code_postal, commune, name, avatar')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -37,6 +39,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       setState(() {
         codePostal = response['code_postal'];
         commune = response['commune'];
+        name = response['name'];
+        avatar = response['avatar'];
       });
     }
   }
@@ -44,9 +48,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   @override
   Widget build(BuildContext context) {
     final user = supabase.auth.currentUser;
-
-    final avatarUrl = user?.userMetadata?["avatar_url"];
-    final displayName = user?.userMetadata?["full_name"] ?? "Utilisateur";
+    final avatarUrl = avatar;
+    final displayName = name ?? "Utilisateur";
     final email = user?.email ?? "Non défini";
 
     return Scaffold(
@@ -121,7 +124,6 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                       icon: const Icon(Icons.edit, size: 18),
                       label: const Text("Modifier"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

@@ -57,6 +57,7 @@ class _InformationPageState extends State<InformationPage> {
     }
   }
 
+  // pages/auth/information_page.dart
   Future<void> _saveProfile() async {
     final user = supabase.auth.currentUser;
     if (user == null) return;
@@ -68,10 +69,11 @@ class _InformationPageState extends State<InformationPage> {
       email: user.email ?? '',
       codePostal: selectedCodePostal!,
       commune: selectedCommune!,
+      name: user.userMetadata?['full_name'],
+      avatar: user.userMetadata?['avatar_url'],
     );
 
     try {
-      //await supabase.from('users').insert(newUser.toMap());
       await supabase.from('users').upsert(newUser.toMap());
 
       if (mounted) {

@@ -11,21 +11,34 @@ Future<Map<String, dynamic>?> getCurrentUserData() async {
 
   final response = await supabase
       .from('users')
-      .select('code_postal, commune')
+      .select('code_postal, commune, name, avatar')
       .eq('id', user.id)
       .maybeSingle();
 
   return {
     "id": user.id,
     "email": user.email,
-    "displayName": user.userMetadata?["full_name"] ?? "Utilisateur",
-    "avatarUrl": user.userMetadata?["avatar_url"],
+    "displayName": response?["name"] ?? user.userMetadata?["full_name"] ?? "Utilisateur",
+    "avatarUrl": response?["avatar"] ?? user.userMetadata?["avatar_url"],
     "codePostal": response?["code_postal"],
     "commune": response?["commune"],
+    "name": response?["name"],
+    "avatar": response?["avatar"],
   };
 }
 
-/// 🔹 Login Google
+/// 🔹 Vérifier et créer/mettre à jour l'utilisateur
+Future<void> createOrUpdateUser(User user) async {
+  final userData = {
+    'id': user.id,
+    'email': user.email ?? '',
+    'name': user.userMetadata?['full_name'],
+    'avatar': user.userMetadata?['avatar_url'],
+  };
+
+  await supabase.from('users').upsert(userData);
+}
+
 Future<User?> signInWithGoogle() async {
   final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 
@@ -42,6 +55,10 @@ Future<User?> signInWithGoogle() async {
     idToken: googleAuth.idToken!,
     accessToken: googleAuth.accessToken,
   );
+
+  if (response.user != null) {
+    await createOrUpdateUser(response.user!);
+  }
 
   return response.user;
 }

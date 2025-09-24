@@ -66,7 +66,7 @@ class PackagingModel {
       "id": id,
       "product_id": productId,
       "material": material,
-      "name": shape, // je mappe shape → name
+      "name": shape,
       "recycling": recycling,
       "number_of_units": numberOfUnits,
       "quantity_per_unit_value": quantityPerUnitValue,

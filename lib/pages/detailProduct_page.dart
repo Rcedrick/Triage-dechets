@@ -76,7 +76,6 @@ class _DetailProductPageState extends State<DetailProductPage> {
           );
         }
 
-
         final product = snapshot.data!["db"] as ProductModel?;
         final offProduct = snapshot.data!["off"] as OffProduct?;
 
@@ -102,7 +101,6 @@ class _DetailProductPageState extends State<DetailProductPage> {
                     children: [
                       _buildApercuTab(product, offProduct),
                       _buildPackagingTab(product?.id.toString() ?? ""),
-
                     ],
                   ),
                 ),

@@ -50,12 +50,15 @@ class _ScanPageState extends State<ScanPage>
     if (code != null && code.isNotEmpty && RegExp(r'^\d+$').hasMatch(code)) {
       setState(() => _hasScanned = true);
 
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => DetailProductPage(barcode: code),
         ),
-      );
+      ).then((_) {
+        Navigator.pop(context, true);
+      });
+
     }
   }
 

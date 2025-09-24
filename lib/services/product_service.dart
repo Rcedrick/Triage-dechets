@@ -85,8 +85,11 @@ class ProductService {
             .replaceFirst(RegExp(r'^(en:|fr:)'), "");
 
         final translatedName = await TranslationService.translateSafe(rawName);
+        // Petit délai entre les appels
+        await Future.delayed(Duration(milliseconds: 500));
 
         final translatedMaterial = await TranslationService.translateSafe(materialName);
+        await Future.delayed(Duration(milliseconds: 500));
 
         final res = await supabase.from("packagings").insert({
           "product_id": productId,
@@ -217,14 +220,14 @@ class ProductService {
       final List data = response;
 
       return data.map<Map<String, dynamic>>((prod) {
-        final packagings = (prod["packagings"] as List?)
-            ?.where((p) => p["to_throw"] == true)
-            .toList() ??
-            [];
+        final allPackagings = (prod["packagings"] as List?) ?? [];
+        final thrownPackagings = (prod["packagings"] as List?) ?.where((p) => p["to_throw"] == true).toList() ?? [];
 
         return {
           ...prod as Map<String, dynamic>,
-          "packagings": packagings,
+          "packagings": thrownPackagings,
+          "total_packagings": allPackagings.length,
+          "thrown_count": thrownPackagings.length,
         };
       }).where((prod) => (prod["packagings"] as List).isNotEmpty).toList();
     } catch (e) {
